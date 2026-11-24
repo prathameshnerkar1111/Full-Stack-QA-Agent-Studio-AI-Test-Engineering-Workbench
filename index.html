@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Full-Stack QA Agent Studio — AI Test Engineering Workbench</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel: #111827;
+      --panel-2: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --purple: #8b5cf6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, #2563eb, #8b5cf6);
+      display: grid; place-items: center; font-weight: 800; font-size: 16px;
+    }
+    .brand h1 { font-size: 16px; font-weight: 700; }
+    .brand span { font-size: 12px; color: var(--muted); display: block; }
+    .header-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    input, select, textarea {
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: 0.15s;
+    }
+    button:hover { background: #2d3b4e; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    button.primary:hover { background: var(--accent-hover); }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.success { background: #065f46; border-color: var(--green); color: #d1fae5; }
+    .pill {
+      padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+      background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+    }
+    .pill:hover, .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .layout {
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      flex: 1;
+      min-height: calc(100vh - 61px);
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { border-right: none; border-bottom: 1px solid var(--border); }
+    }
+    aside {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sidebar-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; }
+    .agent-list { display: flex; flex-direction: column; gap: 8px; }
+    .agent-card {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: #0f172a; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px; cursor: pointer; transition: 0.15s;
+    }
+    .agent-card:hover { border-color: var(--accent); }
+    .agent-card.selected { border-color: var(--accent); background: rgba(59,130,246,0.1); }
+    .agent-card input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); width: 15px; height: 15px; }
+    .agent-card strong { font-size: 13px; display: block; }
+    .agent-card small { font-size: 11px; color: var(--muted); line-height: 1.3; display: block; margin-top: 2px; }
+    main {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-x: hidden;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card-head {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 10px; margin-bottom: 12px;
+    }
+    .card-head h2 { font-size: 15px; font-weight: 700; }
+    .sample-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+    label.fld { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    textarea { width: 100%; min-height: 96px; resize: vertical; line-height: 1.45; }
+    .conditional-box {
+      margin-top: 12px; padding: 12px; border-radius: 8px;
+      background: #0f172a; border: 1px dashed var(--border);
+    }
+    .conditional-box h3 { font-size: 12px; color: #93c5fd; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .run-bar {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+      gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .mode-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .stepper { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .step-chip {
+      font-size: 11px; padding: 5px 10px; border-radius: 999px;
+      background: #0f172a; border: 1px solid var(--border); color: var(--muted);
+    }
+    .step-chip.running { border-color: var(--amber); color: #fde68a; }
+    .step-chip.done { border-color: var(--green); color: #a7f3d0; background: rgba(16,185,129,0.12); }
+    .step-chip.error { border-color: var(--red); color: #fecaca; background: rgba(239,68,68,0.12); }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 14px; }
+    .tab-btn { font-size: 12px; padding: 6px 12px; border-radius: 6px; background: #0f172a; color: var(--muted); }
+    .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #1e293b; color: #e2e8f0; font-weight: 700; white-space: nowrap; }
+    tr:nth-child(even) td { background: rgba(30,41,59,0.35); }
+    .badge {
+      display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    }
+    .b-pos { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+    .b-neg { background: rgba(239,68,68,0.2); color: #fca5a5; }
+    .b-edge { background: rgba(245,158,11,0.2); color: #fcd34d; }
+    .b-ui { background: rgba(139,92,246,0.2); color: #c4b5fd; }
+    .b-p0 { background: rgba(239,68,68,0.25); color: #fecaca; }
+    .b-p1 { background: rgba(245,158,11,0.25); color: #fde68a; }
+    .b-p2 { background: rgba(59,130,246,0.25); color: #bfdbfe; }
+    pre {
+      background: #020617; border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; overflow-x: auto; font-family: 'Cascadia Code', Consolas, monospace;
+      font-size: 12px; line-height: 1.5; color: #e2e8f0;
+    }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .kpi { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+    .kpi small { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .kpi strong { display: block; font-size: 22px; margin-top: 4px; }
+    .sub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; padding: 8px; background: #0f172a; border: 1px solid var(--border); border-radius: 8px; }
+    .sub-tab { font-size: 11.5px; padding: 5px 11px; border-radius: 6px; background: transparent; border: 1px solid transparent; color: var(--muted); font-weight: 600; cursor: pointer; }
+    .sub-tab:hover { color: var(--text); background: var(--panel-2); }
+    .sub-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .prog-wrap { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+    .prog-row { margin-bottom: 10px; }
+    .prog-row:last-child { margin-bottom: 0; }
+    .prog-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; color: #cbd5e1; }
+    .prog-track { width: 100%; height: 10px; background: #1e293b; border-radius: 999px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 999px; transition: width 0.3s; }
+    .chk-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .chk-pill { display: inline-flex; align-items: center; gap: 6px; background: #1e293b; border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .chk-pill input { accent-color: var(--accent); }
+    .bug-card { background: #0f172a; border: 1px solid var(--border); border-left: 4px solid var(--red); border-radius: 8px; padding: 14px; margin-bottom: 10px; }
+    .bug-card h4 { font-size: 14px; margin-bottom: 6px; }
+    .bug-card p { font-size: 12.5px; color: #cbd5e1; margin: 4px 0; line-height: 1.45; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .hidden { display: none !important; }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(2,6,23,0.75);
+      display: grid; place-items: center; z-index: 50; padding: 16px;
+    }
+    .modal {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+      width: 100%; max-width: 620px; max-height: 80vh; overflow-y: auto; padding: 18px;
+    }
+    .toast {
+      position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff;
+      border: 1px solid var(--accent); padding: 10px 16px; border-radius: 8px;
+      font-size: 13px; z-index: 60; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">QA</div>
+      <div>
+        <h1>Full-Stack QA Agent Studio</h1>
+        <span>Modular 9-Agent STLC Workbench • Playwright • API • Defect Triage • Reporting</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <input type="password" id="apiKeyInput" placeholder="Gemini API Key (optional for Demo Mode)" style="width: 245px;" />
+      <select id="modelSelect">
+        <option value="gemini-3.8-flash">gemini-3.8-flash (Recommended)</option>
+        <option value="gemini-4-hydrogen">gemini-4-hydrogen (Latest Agentic)</option>
+        <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Fastest)</option>
+      </select>
+      <button id="historyBtn">History (<span id="histCount">0</span>)</button>
+      <button id="exportAllBtn" class="success">Export All (.md)</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <div class="sidebar-title">Quick Presets</div>
+      <div class="presets">
+        <button class="pill" data-preset="all">Full Pipeline (9)</button>
+        <button class="pill" data-preset="design">Test Design</button>
+        <button class="pill" data-preset="auto">Automation</button>
+        <button class="pill" data-preset="triage">Triage &amp; Release</button>
+        <button class="pill" data-preset="clear">Clear</button>
+      </div>
+      <div class="sidebar-title" style="margin-top:4px;">Select QA Agents (<span id="selectedCount">0</span>/9)</div>
+      <div class="agent-list" id="agentList"></div>
+    </aside>
+
+    <main>
+      <section class="card">
+        <div class="card-head">
+          <h2>1. Feature / User Story &amp; Context</h2>
+          <div class="sample-btns">
+            <button class="pill" data-sample="flipmart">Load FlipMart Checkout</button>
+            <button class="pill" data-sample="nexabank">Load NexaBank Transfer</button>
+            <button class="pill" data-sample="api">Load REST API Auth</button>
+          </div>
+        </div>
+        <label class="fld">
+          Requirement / User Story / PRD
+          <textarea id="storyInput" placeholder="Paste your user story, PRD, acceptance criteria, or feature description here..."></textarea>
+        </label>
+
+        <div id="condAuto" class="conditional-box hidden">
+          <h3>Automation Target Settings (UI / API Agents)</h3>
+          <div class="field-grid">
+            <label class="fld">Target Base URL
+              <input id="baseUrlInput" value="https://prathameshnerkar1111.github.io/flipmart-qa-sandbox/" />
+            </label>
+            <label class="fld">API Test Framework
+              <select id="apiFramework">
+                <option value="Playwright APIRequestContext">Playwright TypeScript (APIRequestContext)</option>
+                <option value="REST Assured Java">REST Assured (Java)</option>
+                <option value="Postman Scripts">Postman Post-Response Scripts</option>
+                <option value="cURL">cURL Commands</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div id="condDefect" class="conditional-box hidden">
+          <h3>Failure Logs / Stack Trace (Defect Analyser &amp; Bug Generator)</h3>
+          <textarea id="logsInput" placeholder="Paste failed Playwright trace, assertion error, or API 500/422 response..."></textarea>
+        </div>
+
+        <div id="condReg" class="conditional-box hidden">
+          <h3>Code Change / PR Diff Summary (Regression Agent)</h3>
+          <textarea id="diffInput" placeholder="Describe modified modules, files, or PR summary (e.g., Updated coupon discount validation in cart.js and checkout total calculation)..."></textarea>
+        </div>
+
+        <div id="condReport" class="conditional-box hidden">
+          <h3>Execution Metrics &amp; Report Sub-Menu Sections (QA Reporting Agent)</h3>
+          <div class="field-grid">
+            <label class="fld">Total Planned <input type="number" id="mPlanned" value="50" min="0" /></label>
+            <label class="fld">Passed <input type="number" id="mPassed" value="44" min="0" /></label>
+            <label class="fld">Failed <input type="number" id="mFailed" value="4" min="0" /></label>
+            <label class="fld">Blocked <input type="number" id="mBlocked" value="2" min="0" /></label>
+          </div>
+          <div style="margin-top:12px;">
+            <span style="font-size:12px;color:var(--muted);font-weight:600;">Select QA Report Sub-Sections to Include:</span>
+            <div class="chk-grid">
+              <label class="chk-pill"><input type="checkbox" class="rep-sec-chk" value="dashboard" checked /> Executive Dashboard</label>
+              <label class="chk-pill"><input type="checkbox" class="rep-sec-chk" value="rtm" checked /> RTM (Traceability Matrix)</label>
+              <label class="chk-pill"><input type="checkbox" class="rep-sec-chk" value="defects" checked /> Defect &amp; Risk Summary</label>
+              <label class="chk-pill"><input type="checkbox" class="rep-sec-chk" value="signoff" checked /> Exit Criteria &amp; Sign-Off</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="run-bar">
+          <label class="mode-toggle">
+            <input type="checkbox" id="demoModeToggle" checked />
+            <span><strong>Demo Mode</strong> (Instant offline preview without API key — uncheck to call live Gemini API)</span>
+          </label>
+          <button id="runBtn" class="primary">Run Selected Agents →</button>
+        </div>
+        <div id="stepper" class="stepper"></div>
+      </section>
+
+      <section class="card" id="outputSection">
+        <div class="card-head">
+          <h2>2. Agent Output Workbench</h2>
+          <span id="runStatusText" style="font-size:12px;color:var(--muted);">Select agents on the left and click Run.</span>
+        </div>
+        <div id="outputTabs" class="tabs"></div>
+        <div id="outputBody" style="color:var(--muted);font-size:13px;">
+          No run yet. Tip: Click <strong>Load FlipMart Checkout</strong> and press <strong>Run Selected Agents</strong> in Demo Mode to see all 9 modules in action immediately.
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="historyModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="card-head">
+        <h2>Run History (localStorage)</h2>
+        <button id="closeHistBtn">Close</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <script>
+    const AGENTS = [
+      { id: 'req', name: '1. Requirement Analyser', desc: 'Extract REQ-IDs, Given-When-Then AC & gaps', group: 'design' },
+      { id: 'tc', name: '2. Test Case Generator', desc: 'Positive, Negative, Edge & UI test cases', group: 'design' },
+      { id: 'data', name: '3. Test Data Generator', desc: 'Valid, min/max boundary & invalid datasets', group: 'design' },
+      { id: 'ui', name: '4. UI Testing Agent', desc: 'Runnable Playwright TypeScript UI specs', group: 'auto' },
+      { id: 'api', name: '5. API Testing Agent', desc: 'Status, schema & auth API validation tests', group: 'auto' },
+      { id: 'defect', name: '6. Defect Analyser', desc: 'Root-cause triage (Bug vs Script vs Flaky)', group: 'triage' },
+      { id: 'bug', name: '7. Bug Report Generator', desc: 'Jira-ready reproducible defect tickets', group: 'triage' },
+      { id: 'reg', name: '8. Regression Agent', desc: 'Impact-based Tier 1/2/3 test selection', group: 'triage' },
+      { id: 'report', name: '9. QA Reporting Agent', desc: 'Pass rate KPIs & Go/No-Go sign-off report', group: 'triage' }
+    ];
+
+    const SAMPLES = {
+      flipmart: {
+        story: 'As a FlipMart shopper, I want to apply promo codes (SAVE10 for 10% off, FLAT500 for ₹500 off) in my cart and complete checkout using the isolated Card Payment iframe so that my order is confirmed and an invoice (.txt) is downloadable.',
+        url: 'https://prathameshnerkar1111.github.io/flipmart-qa-sandbox/',
+        logs: 'Error: expect(received).toBe(expected)\nExpected: 1000\nReceived: 0\nTest: TC-031 Apply FLAT500 on ₹299 grocery cart dropped payable total to ₹0 without minimum cart validation.',
+        diff: 'Modified cart.js (applyCoupon), checkout.js (calculatePayableTotal), and payment-iframe.html (postMessage validation).'
+      },
+      nexabank: {
+        story: 'As a Standard NexaBank customer (₹1,00,000 daily transfer limit), I want to transfer INR funds between my accounts or to a saved beneficiary (11-char IFSC) with balance validation, confirmation modal, and idempotency protection.',
+        url: 'https://prathameshnerkar1111.github.io/nexabank-qa-lab-v2/',
+        logs: 'AssertionError: Expected status 422 INSUFFICIENT_FUNDS when transferring ₹90,000 from Salary account (balance ₹44,000), but received 500 Internal Server Error.',
+        diff: 'Modified transfers.ts (daily limit check, Idempotency-Key cache) and beneficiaries.ts (IFSC validation).'
+      },
+      api: {
+        story: 'REST API Auth & Users CRUD: POST /api/v1/auth/login returns Bearer JWT for STANDARD/VIP roles (403 for locked accounts). Protected CRUD endpoints /api/v1/users require Bearer token and enforce schema validation.',
+        url: 'http://localhost:3000',
+        logs: 'TimeoutError: POST /api/v1/auth/login exceeded 2000ms SLA; received 429 Too Many Requests when chaos rate-limit toggle was active.',
+        diff: 'Updated authMiddleware.js (JWT expiry) and usersController.js (role guard on DELETE).'
+      }
+    };
+
+    const selected = new Set(['req', 'tc', 'data', 'ui']);
+    let currentResults = {};
+    let activeTab = null;
+
+    const $ = id => document.getElementById(id);
+
+    function toast(msg) {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+    }
+
+    function renderAgentList() {
+      const list = $('agentList');
+      list.innerHTML = '';
+      AGENTS.forEach(a => {
+        const isSel = selected.has(a.id);
+        const card = document.createElement('label');
+        card.className = 'agent-card' + (isSel ? ' selected' : '');
+        card.innerHTML = `<input type="checkbox" ${isSel ? 'checked' : ''} data-id="${a.id}" />
+          <div><strong>${a.name}</strong><small>${a.desc}</small></div>`;
+        card.querySelector('input').addEventListener('change', e => {
+          if (e.target.checked) selected.add(a.id);
+          else selected.delete(a.id);
+          renderAgentList();
+          updateConditionals();
+        });
+        list.appendChild(card);
+      });
+      $('selectedCount').textContent = selected.size;
+    }
+
+    function updateConditionals() {
+      $('condAuto').classList.toggle('hidden', !(selected.has('ui') || selected.has('api')));
+      $('condDefect').classList.toggle('hidden', !(selected.has('defect') || selected.has('bug')));
+      $('condReg').classList.toggle('hidden', !selected.has('reg'));
+      $('condReport').classList.toggle('hidden', !selected.has('report'));
+    }
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = btn.dataset.preset;
+        selected.clear();
+        if (p === 'all') AGENTS.forEach(a => selected.add(a.id));
+        else if (p === 'design') ['req', 'tc', 'data'].forEach(id => selected.add(id));
+        else if (p === 'auto') ['ui', 'api'].forEach(id => selected.add(id));
+        else if (p === 'triage') ['defect', 'bug', 'reg', 'report'].forEach(id => selected.add(id));
+        renderAgentList();
+        updateConditionals();
+      });
+    });
+
+    document.querySelectorAll('[data-sample]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = SAMPLES[btn.dataset.sample];
+        $('storyInput').value = s.story;
+        $('baseUrlInput').value = s.url;
+        $('logsInput').value = s.logs;
+        $('diffInput').value = s.diff;
+        toast('Sample loaded: ' + btn.textContent);
+      });
+    });
+
+    // Save/load API key
+    $('apiKeyInput').value = localStorage.getItem('qa_studio_api_key') || '';
+    $('apiKeyInput').addEventListener('input', e => {
+      localStorage.setItem('qa_studio_api_key', e.target.value.trim());
+      if (e.target.value.trim()) $('demoModeToggle').checked = false;
+    });
+
+    const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-4-hydrogen'];
+
+    async function callGeminiJSON(apiKey, primaryModel, systemPrompt, userPrompt, onStatus) {
+      const modelsToTry = [primaryModel, ...FALLBACK_MODELS.filter(m => m !== primaryModel)];
+      let lastErr = null;
+
+      for (const model of modelsToTry) {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
+              })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+              return JSON.parse(text);
+            }
+            const errText = await res.text();
+            lastErr = new Error(`Gemini API HTTP ${res.status} (${model}): ${errText}`);
+            // Retry on 503 (high demand) or 429 (rate limit) with exponential backoff
+            if (res.status === 503 || res.status === 429) {
+              const waitMs = attempt * 2500;
+              if (onStatus) onStatus(`${model} busy (${res.status}) — retry ${attempt}/3 in ${waitMs/1000}s...`);
+              await new Promise(r => setTimeout(r, waitMs));
+              continue;
+            }
+            // On 404 (model unavailable), immediately fall back to next model
+            if (res.status === 404) break;
+            throw lastErr;
+          } catch (err) {
+            lastErr = err;
+            if (attempt < 3) {
+              await new Promise(r => setTimeout(r, attempt * 2000));
+            }
+          }
+        }
+        if (onStatus) onStatus(`Switching to fallback model...`);
+      }
+      throw lastErr || new Error('All Gemini models failed due to high demand.');
+    }
+
+    function generateDemoOutput(agentId, ctx) {
+      const baseUrl = $('baseUrlInput').value || 'https://example.com';
+      const planned = +$('mPlanned').value || 50;
+      const passed = +$('mPassed').value || 44;
+      const failed = +$('mFailed').value || 4;
+      const blocked = +$('mBlocked').value || 2;
+      const executed = passed + failed + blocked;
+      const passRate = executed ? ((passed / executed) * 100).toFixed(1) : '0.0';
+
+      const demo = {
+        req: {
+          requirements: [
+            { id: 'REQ-01', module: 'Core Workflow', description: 'Validate primary user flow end-to-end with state persistence.', acceptanceCriteria: ['Given valid inputs, When submitted, Then system persists state and displays confirmation.'], gaps: ['Define max retry attempts on timeout'] },
+            { id: 'REQ-02', module: 'Validation & Security', description: 'Enforce business rules, numeric bounds, and unauthorized access guards.', acceptanceCriteria: ['Given invalid or out-of-range input, When submitted, Then inline error blocks submission cleanly.'], gaps: ['Clarify minimum threshold for flat discounts/limits'] }
+          ]
+        },
+        tc: {
+          testCases: [
+            { tcId: 'TC-001', reqId: 'REQ-01', module: 'Core Flow', category: 'Positive', priority: 'P0', title: 'Complete happy-path transaction successfully', steps: '1. Open app\n2. Enter valid data\n3. Submit', testData: 'Valid persona & nominal amount', expected: 'Operation succeeds with confirmation ID and updated state.' },
+            { tcId: 'TC-002', reqId: 'REQ-02', module: 'Validation', category: 'Negative', priority: 'P0', title: 'Reject invalid / unauthorized input', steps: '1. Enter invalid payload\n2. Click Submit', testData: 'Invalid code / wrong credentials', expected: 'Inline validation error displayed; state unchanged.' },
+            { tcId: 'TC-003', reqId: 'REQ-02', module: 'Boundaries', category: 'Edge', priority: 'P1', title: 'Verify exact upper & lower boundary thresholds', steps: '1. Test min-1\n2. Test exact min\n3. Test max+1', testData: 'min-1, min, max, max+1', expected: 'Exact bounds accepted; out-of-range values rejected.' },
+            { tcId: 'TC-004', reqId: 'REQ-01', module: 'UI/UX', category: 'UI/UX', priority: 'P2', title: 'Responsive layout & modal dismiss on mobile viewport', steps: '1. Resize to 375x812\n2. Open and close modal', testData: 'Viewport 375x812', expected: 'No horizontal overflow; controls remain accessible.' }
+          ]
+        },
+        data: {
+          datasets: [
+            { field: 'Amount / Quantity', validNominal: '5000', minBoundary: '1', maxBoundary: '100000', invalidBoundary: '0, -50, 100000.01', invalidFormat: 'abc, null, ""' },
+            { field: 'Promo / Reference Code', validNominal: 'SAVE10, FLAT500', minBoundary: '6 chars', maxBoundary: '11 chars', invalidBoundary: '5 chars, 12 chars', invalidFormat: 'FAKE999, <script>' }
+          ]
+        },
+        ui: {
+          filename: 'qa-agent-ui.spec.ts',
+          runCommand: 'npx playwright test qa-agent-ui.spec.ts --headed --trace on',
+          code: `import { test, expect } from '@playwright/test';\n\nconst BASE_URL = '${baseUrl}';\n\ntest.describe('Generated QA Agent UI Suite', () => {\n  test('TC-001: Happy-path end-to-end flow', async ({ page }) => {\n    await page.goto(BASE_URL);\n    await expect(page).toHaveTitle(/.+/);\n    // Example resilient locator assertions\n    const body = page.locator('body');\n    await expect(body).toBeVisible();\n  });\n});`
+        },
+        api: (() => {
+          const fw = $('apiFramework').value;
+          if (fw === 'Postman Scripts') {
+            return {
+              framework: fw,
+              filename: 'postman-post-response-tests.js',
+              runCommand: 'Import the exported Postman Collection (.json) into Postman or run: newman run qa_agent_postman_collection.json',
+              code: `// Paste in Postman -> Scripts -> Post-response tab
+pm.test("Status code is 200 OK or 201 Created", () => {
+    pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+});
+
+pm.test("Response time is under 500ms SLA", () => {
+    pm.expect(pm.response.responseTime).to.be.below(500);
+});
+
+pm.test("Response Content-Type is application/json", () => {
+    pm.response.to.have.header("Content-Type");
+    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+});
+
+pm.test("Validate response JSON schema & save authToken", () => {
+    const json = pm.response.json();
+    pm.expect(json).to.be.an("object");
+    if (json.token) {
+        pm.expect(json.token).to.be.a("string").and.not.be.empty;
+        pm.collectionVariables.set("authToken", json.token);
+    }
+});
+
+// Negative / Error Guard Example (use on 400/401/422 requests)
+// pm.test("Error response contains error code and message", () => {
+//     const err = pm.response.json();
+//     pm.expect(err).to.have.property("error");
+//     pm.expect(err).to.have.property("message");
+// });`
+            };
+          }
+          if (fw === 'REST Assured Java') {
+            return {
+              framework: fw,
+              filename: 'QaAgentApiTest.java',
+              runCommand: 'mvn test -Dtest=QaAgentApiTest',
+              code: `import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.Test;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+
+public class QaAgentApiTest {
+    private static final String BASE_URL = "${baseUrl}";
+
+    @Test
+    void testApiPositiveAndSchema() {
+        RestAssured.baseURI = BASE_URL;
+        given()
+            .contentType(ContentType.JSON)
+            .header("Accept", "application/json")
+        .when()
+            .get("/api/v1/health")
+        .then()
+            .statusCode(anyOf(is(200), is(201)))
+            .time(lessThan(1000L));
+    }
+}`
+            };
+          }
+          if (fw === 'cURL') {
+            return {
+              framework: fw,
+              filename: 'qa-agent-api.sh',
+              runCommand: 'bash qa-agent-api.sh',
+              code: `# 1. Positive Auth / Login Request
+curl -i -X POST "${baseUrl}/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"prathamesh.demo@example.com","password":"Pass@1234"}'
+
+# 2. Protected GET Request (replace <TOKEN>)
+curl -i -X GET "${baseUrl}/api/v1/accounts" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Accept: application/json"`
+            };
+          }
+          return {
+            framework: fw,
+            filename: 'qa-agent-api.spec.ts',
+            runCommand: 'npx playwright test qa-agent-api.spec.ts',
+            code: `import { test, expect } from '@playwright/test';
+
+const BASE_URL = '${baseUrl}';
+
+test.describe('Generated QA Agent API Suite', () => {
+  test('API-01: Validate positive response, headers & SLA', async ({ request }) => {
+    const start = Date.now();
+    const res = await request.get(\`\${BASE_URL}\`);
+    expect(res.status()).toBeLessThan(400);
+    expect(Date.now() - start).toBeLessThan(2000);
+  });
+
+  test('API-02: Negative check for unauthorized protected route', async ({ request }) => {
+    const res = await request.get(\`\${BASE_URL}/api/v1/auth/me\`);
+    expect([401, 403, 404]).toContain(res.status());
+  });
+});`
+          };
+        })(),
+        defect: {
+          classification: 'PRODUCT_BUG',
+          confidence: 'High',
+          rootCause: 'Business rule guard is missing before applying the calculation/transaction, allowing an out-of-bounds state.',
+          evidence: $('logsInput').value || 'Observed mismatch between expected validation block and actual response.',
+          recommendedFix: 'Add explicit boundary check before state mutation and return HTTP 400 / inline error message.'
+        },
+        bug: {
+          bugs: [
+            {
+              id: 'BUG-301',
+              summary: '[Core Validation] Missing boundary check allows invalid state transition',
+              severity: 'Major',
+              priority: 'P1 - High',
+              environment: `Chrome 131 / Windows 11 / ${baseUrl}`,
+              steps: '1. Open target application.\n2. Trigger boundary condition from TC-003.\n3. Submit action.',
+              expected: 'System blocks submission and shows clear validation message.',
+              actual: $('logsInput').value || 'System accepts invalid input without raising a validation error.'
+            }
+          ]
+        },
+        reg: {
+          tiers: [
+            { tier: 'Tier 1 (Must Run)', scope: 'Direct Impact & P0 Smoke', tests: 'TC-001, TC-002, TC-003', rationale: 'Directly exercises modified files from PR diff.' },
+            { tier: 'Tier 2 (Adjacent)', scope: 'Downstream Consumers', tests: 'Order Summary, Ledger History, Invoice Export', rationale: 'Consumes totals/state produced by modified module.' },
+            { tier: 'Tier 3 (Deferred)', scope: 'Low Risk / Unrelated', tests: 'Static footer links, profile theme toggle', rationale: 'No shared state or dependency with changed files.' }
+          ],
+          grepCommand: 'npx playwright test --grep "@P0|@checkout|@validation"'
+        },
+        report: {
+          planned, executed, passed, failed, blocked,
+          passRate: Number(passRate),
+          executionProgress: planned ? Number(((executed / planned) * 100).toFixed(1)) : 0,
+          recommendation: failed > 0 ? 'CONDITIONAL HOLD / NO-GO' : 'GO FOR RELEASE',
+          summary: `Executed ${executed} of ${planned} planned test cases with a ${passRate}% pass rate (${passed} passed, ${failed} failed, ${blocked} blocked). Resolve open P0/P1 defects before production release.`,
+          rtm: [
+            { reqId: 'REQ-01', module: 'Core Workflow', linkedTCs: 'TC-001, TC-004', total: 2, passed: 2, failed: 0, coverageStatus: 'Verified' },
+            { reqId: 'REQ-02', module: 'Validation & Security', linkedTCs: 'TC-002, TC-003', total: 2, passed: 1, failed: 1, coverageStatus: 'Failed' }
+          ],
+          defects: {
+            critical: 0,
+            major: failed > 0 ? Math.max(1, Math.floor(failed / 2)) : 0,
+            minor: failed > 1 ? failed - Math.max(1, Math.floor(failed / 2)) : 0,
+            blockers: failed > 0 ? ['BUG-301: Missing boundary validation guard on primary transaction flow'] : [],
+            risks: ['Regression risk on downstream totals/ledger if validation fix alters payload schema', 'Free-tier API latency spikes under peak load']
+          },
+          exitCriteria: [
+            { criterion: '100% of P0 - Critical test cases executed and passed', status: failed === 0 ? 'Met' : 'Not Met', owner: 'QA Lead' },
+            { criterion: 'Zero open Blocker / Critical severity defects', status: 'Met', owner: 'Engineering Lead' },
+            { criterion: '100% Requirement-to-Test-Case traceability in RTM', status: 'Met', owner: 'QA Lead' },
+            { criterion: 'Sign-off approval from Product Owner & QA Lead', status: failed === 0 ? 'Ready' : 'Pending Fix', owner: 'Product Owner' }
+          ]
+        }
+      };
+      return demo[agentId];
+    }
+
+    function getSystemPrompt(agentId) {
+      const prompts = {
+        req: 'You are a Requirement Analyser QA Agent. Return JSON: { "requirements": [{ "id": "REQ-01", "module": "", "description": "", "acceptanceCriteria": ["Given... When... Then..."], "gaps": [""] }] }.',
+        tc: 'You are a Senior Functional Test Case Generator. Return JSON: { "testCases": [{ "tcId": "TC-001", "reqId": "REQ-01", "module": "", "category": "Positive|Negative|Edge|UI/UX", "priority": "P0|P1|P2", "title": "", "steps": "", "testData": "", "expected": "" }] }. Include Positive, Negative, Edge, and UI/UX.',
+        data: 'You are a Test Data Generator (BVA/EP). Return JSON: { "datasets": [{ "field": "", "validNominal": "", "minBoundary": "", "maxBoundary": "", "invalidBoundary": "", "invalidFormat": "" }] }.',
+        ui: 'You are a Playwright TypeScript UI Automation Agent. Return JSON: { "filename": "ui.spec.ts", "runCommand": "npx playwright test ui.spec.ts --headed", "code": "..." }. Use resilient getByRole/getByTestId locators and auto-waiting expect assertions.',
+        api: 'You are an API Testing Agent. Return JSON: { "framework": "", "filename": "api.spec.ts", "runCommand": "", "code": "..." }. Validate status codes, schema, headers, and negative cases.',
+        defect: 'You are a Defect Analyser Agent. Return JSON: { "classification": "PRODUCT_BUG|SCRIPT_ISSUE|FLAKY_TIMING|ENV_DATA_ISSUE", "confidence": "High|Medium|Low", "rootCause": "", "evidence": "", "recommendedFix": "" }.',
+        bug: 'You are a Jira Bug Report Generator. Return JSON: { "bugs": [{ "id": "BUG-101", "summary": "", "severity": "Critical|Major|Minor", "priority": "P0|P1|P2", "environment": "", "steps": "", "expected": "", "actual": "" }] }.',
+        reg: 'You are a Regression Impact Agent. Return JSON: { "tiers": [{ "tier": "Tier 1 (Must Run)|Tier 2 (Adjacent)|Tier 3 (Deferred)", "scope": "", "tests": "", "rationale": "" }], "grepCommand": "npx playwright test --grep ..." }.',
+        report: 'You are a QA Reporting Agent. Return JSON: { "planned": 0, "executed": 0, "passed": 0, "failed": 0, "blocked": 0, "passRate": 0, "executionProgress": 0, "recommendation": "GO|CONDITIONAL GO|NO-GO", "summary": "", "rtm": [{ "reqId": "REQ-01", "module": "", "linkedTCs": "TC-001, TC-002", "total": 2, "passed": 2, "failed": 0, "coverageStatus": "Verified|Failed|Pending" }], "defects": { "critical": 0, "major": 0, "minor": 0, "blockers": [""], "risks": [""] }, "exitCriteria": [{ "criterion": "", "status": "Met|Not Met|Pending", "owner": "" }] }.'
+      };
+      return prompts[agentId];
+    }
+
+    function downloadFile(filename, content, mime = 'text/plain') {
+      const blob = new Blob([content], { type: mime });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    }
+
+    function renderTabContent(agentId) {
+      const d = currentResults[agentId];
+      const body = $('outputBody');
+      if (!d) { body.innerHTML = '<p>No output yet.</p>'; return; }
+
+      if (agentId === 'req') {
+        const rows = (d.requirements || []).map(r => `<tr>
+          <td><strong>${escapeHtml(r.id)}</strong></td>
+          <td>${escapeHtml(r.module)}</td>
+          <td>${escapeHtml(r.description)}</td>
+          <td>${(r.acceptanceCriteria || []).map(c => '• ' + escapeHtml(c)).join('<br>')}</td>
+          <td>${(r.gaps || []).map(g => '⚠ ' + escapeHtml(g)).join('<br>')}</td>
+        </tr>`).join('');
+        body.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Req ID</th><th>Module</th><th>Description</th><th>Acceptance Criteria</th><th>Clarification Gaps</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      } else if (agentId === 'tc') {
+        const list = d.testCases || [];
+        const rows = list.map(t => {
+          const cCls = t.category === 'Positive' ? 'b-pos' : t.category === 'Negative' ? 'b-neg' : t.category === 'Edge' ? 'b-edge' : 'b-ui';
+          const pCls = String(t.priority).startsWith('P0') ? 'b-p0' : String(t.priority).startsWith('P1') ? 'b-p1' : 'b-p2';
+          return `<tr>
+            <td><strong>${escapeHtml(t.tcId)}</strong></td>
+            <td>${escapeHtml(t.reqId)}</td>
+            <td><span class="badge ${cCls}">${escapeHtml(t.category)}</span></td>
+            <td><span class="badge ${pCls}">${escapeHtml(t.priority)}</span></td>
+            <td><strong>${escapeHtml(t.title)}</strong></td>
+            <td>${escapeHtml(t.steps).replace(/\n/g, '<br>')}</td>
+            <td><code>${escapeHtml(t.testData)}</code></td>
+            <td>${escapeHtml(t.expected)}</td>
+          </tr>`;
+        }).join('');
+        body.innerHTML = `<div class="toolbar"><span><strong>${list.length}</strong> test cases generated</span>
+          <button id="exportCsvBtn">Download CSV</button></div>
+          <div class="table-wrap"><table><thead><tr><th>TC ID</th><th>Req</th><th>Category</th><th>Priority</th><th>Title</th><th>Steps</th><th>Test Data</th><th>Expected Result</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        $('exportCsvBtn').onclick = () => {
+          const hdr = ['TC ID','Req ID','Module','Category','Priority','Title','Steps','Test Data','Expected'];
+          const csv = [hdr.join(','), ...list.map(t => [t.tcId,t.reqId,t.module,t.category,t.priority,t.title,t.steps,t.testData,t.expected].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+          downloadFile('qa_test_cases.csv', csv, 'text/csv');
+        };
+      } else if (agentId === 'data') {
+        const list = d.datasets || [];
+        const rows = list.map(x => `<tr>
+          <td><strong>${escapeHtml(x.field)}</strong></td>
+          <td><code>${escapeHtml(x.validNominal)}</code></td>
+          <td><code>${escapeHtml(x.minBoundary)}</code></td>
+          <td><code>${escapeHtml(x.maxBoundary)}</code></td>
+          <td><code>${escapeHtml(x.invalidBoundary)}</code></td>
+          <td><code>${escapeHtml(x.invalidFormat)}</code></td>
+        </tr>`).join('');
+        body.innerHTML = `<div class="toolbar"><span>Boundary Value &amp; Equivalence Partitions</span>
+          <button id="exportJsonBtn">Download JSON Fixture</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Field</th><th>Valid Nominal</th><th>Min Boundary</th><th>Max Boundary</th><th>Invalid Boundary</th><th>Invalid Format</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        $('exportJsonBtn').onclick = () => downloadFile('test-data.json', JSON.stringify(list, null, 2), 'application/json');
+      } else if (agentId === 'ui' || agentId === 'api') {
+        const pmBtn = agentId === 'api' ? '<button id="dlPostmanBtn" class="success">Download Postman Collection (.json)</button>' : '';
+        body.innerHTML = `<div class="toolbar"><span>Run locally: <code>${escapeHtml(d.runCommand)}</code></span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;"><button id="copyCodeBtn">Copy Code</button><button id="dlCodeBtn">Download ${escapeHtml(d.filename || 'test.spec.ts')}</button>${pmBtn}</div></div>
+          <pre>${escapeHtml(d.code)}</pre>`;
+        $('copyCodeBtn').onclick = () => { navigator.clipboard.writeText(d.code || ''); toast('Code copied to clipboard'); };
+        $('dlCodeBtn').onclick = () => downloadFile(d.filename || 'generated.spec.ts', d.code || '');
+        if (agentId === 'api') {
+          $('dlPostmanBtn').onclick = () => {
+            const baseUrl = ($('baseUrlInput').value || 'http://localhost:3000').replace(/\/+$/, '');
+            const scriptLines = (d.framework === 'Postman Scripts' && d.code)
+              ? d.code.split('\n')
+              : [
+                  'pm.test("Status code is 200 or 201", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));',
+                  'pm.test("Response time < 500ms", () => pm.expect(pm.response.responseTime).to.be.below(500));',
+                  'const json = pm.response.json();',
+                  'if (json && json.token) { pm.collectionVariables.set("authToken", json.token); }'
+                ];
+            const collection = {
+              info: {
+                name: 'Full-Stack QA Agent — API Test Collection',
+                description: ($('storyInput').value || 'Generated by Full-Stack QA Agent Studio').slice(0, 300),
+                schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
+              },
+              variable: [
+                { key: 'baseUrl', value: baseUrl, type: 'string' },
+                { key: 'authToken', value: '', type: 'string' }
+              ],
+              item: [
+                {
+                  name: '1. Auth Login (Positive - Save Token)',
+                  event: [{ listen: 'test', script: { type: 'text/javascript', exec: scriptLines } }],
+                  request: {
+                    method: 'POST',
+                    header: [{ key: 'Content-Type', value: 'application/json' }],
+                    body: { mode: 'raw', raw: JSON.stringify({ email: 'prathamesh.demo@example.com', password: 'Pass@1234' }, null, 2) },
+                    url: { raw: '{{baseUrl}}/api/v1/auth/login', host: ['{{baseUrl}}'], path: ['api', 'v1', 'auth', 'login'] }
+                  }
+                },
+                {
+                  name: '2. Protected Resource (Positive - Bearer Auth)',
+                  event: [{
+                    listen: 'test',
+                    script: {
+                      type: 'text/javascript',
+                      exec: [
+                        'pm.test("Status code is 200 OK", () => pm.response.to.have.status(200));',
+                        'pm.test("Response is valid JSON", () => pm.expect(pm.response.json()).to.be.an("object"));',
+                        'pm.test("Response time < 500ms", () => pm.expect(pm.response.responseTime).to.be.below(500));'
+                      ]
+                    }
+                  }],
+                  request: {
+                    method: 'GET',
+                    header: [{ key: 'Authorization', value: 'Bearer {{authToken}}' }],
+                    url: { raw: '{{baseUrl}}/api/v1/auth/me', host: ['{{baseUrl}}'], path: ['api', 'v1', 'auth', 'me'] }
+                  }
+                },
+                {
+                  name: '3. Unauthorized Access (Negative - Missing Token)',
+                  event: [{
+                    listen: 'test',
+                    script: {
+                      type: 'text/javascript',
+                      exec: [
+                        'pm.test("Unauthorized request returns 401 or 403", () => pm.expect(pm.response.code).to.be.oneOf([401, 403]));',
+                        'pm.test("Error message returned", () => pm.expect(pm.response.json()).to.have.property("message"));'
+                      ]
+                    }
+                  }],
+                  request: {
+                    method: 'GET',
+                    header: [],
+                    url: { raw: '{{baseUrl}}/api/v1/auth/me', host: ['{{baseUrl}}'], path: ['api', 'v1', 'auth', 'me'] }
+                  }
+                }
+              ]
+            };
+            downloadFile('qa_agent_postman_collection.json', JSON.stringify(collection, null, 2), 'application/json');
+            toast('Downloaded Postman Collection v2.1 (.json)');
+          };
+        }
+      } else if (agentId === 'defect') {
+        body.innerHTML = `<div class="bug-card">
+          <h4>Root-Cause Classification: <span class="badge b-p0">${escapeHtml(d.classification)}</span> <span class="badge b-p2">Confidence: ${escapeHtml(d.confidence)}</span></h4>
+          <p><strong>Root Cause:</strong> ${escapeHtml(d.rootCause)}</p>
+          <p><strong>Log Evidence:</strong> ${escapeHtml(d.evidence)}</p>
+          <p><strong>Recommended Action:</strong> ${escapeHtml(d.recommendedFix)}</p>
+        </div>`;
+      } else if (agentId === 'bug') {
+        body.innerHTML = (d.bugs || []).map(b => `<div class="bug-card">
+          <h4>${escapeHtml(b.id)} — ${escapeHtml(b.summary)} <span class="badge b-p0">${escapeHtml(b.severity)}</span> <span class="badge b-p1">${escapeHtml(b.priority)}</span></h4>
+          <p><strong>Environment:</strong> ${escapeHtml(b.environment)}</p>
+          <p><strong>Steps to Reproduce:</strong><br>${escapeHtml(b.steps).replace(/\n/g,'<br>')}</p>
+          <p><strong>Expected:</strong> ${escapeHtml(b.expected)}</p>
+          <p><strong>Actual:</strong> ${escapeHtml(b.actual)}</p>
+        </div>`).join('');
+      } else if (agentId === 'reg') {
+        const rows = (d.tiers || []).map(t => `<tr><td><strong>${escapeHtml(t.tier)}</strong></td><td>${escapeHtml(t.scope)}</td><td><code>${escapeHtml(t.tests)}</code></td><td>${escapeHtml(t.rationale)}</td></tr>`).join('');
+        body.innerHTML = `<div class="toolbar"><span>Targeted Command: <code>${escapeHtml(d.grepCommand)}</code></span></div>
+          <div class="table-wrap"><table><thead><tr><th>Tier</th><th>Scope</th><th>Selected Tests</th><th>Rationale</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      } else if (agentId === 'report') {
+        const enabledSecs = [...document.querySelectorAll('.rep-sec-chk:checked')].map(c => c.value);
+        const sections = enabledSecs.length ? enabledSecs : ['dashboard', 'rtm', 'defects', 'signoff'];
+        let activeSub = 'all';
+
+        const subLabels = {
+          all: 'All Selected Sections',
+          dashboard: 'Executive Dashboard',
+          rtm: 'RTM (Traceability Matrix)',
+          defects: 'Defect & Risk Summary',
+          signoff: 'Exit Criteria & Sign-Off'
+        };
+
+        const renderSubView = () => {
+          const show = sec => activeSub === 'all' ? sections.includes(sec) : activeSub === sec;
+          const execProg = d.executionProgress ?? (d.planned ? Number(((d.executed / d.planned) * 100).toFixed(1)) : 0);
+          const recColor = String(d.recommendation).includes('NO-GO') || String(d.recommendation).includes('HOLD') ? 'var(--amber)' : 'var(--green)';
+
+          let htmlOut = `<div class="toolbar" style="margin-bottom:12px;">
+            <div class="sub-tabs" id="repSubTabs" style="margin-bottom:0;flex:1;">
+              <button class="sub-tab ${activeSub === 'all' ? 'active' : ''}" data-sub="all">${subLabels.all}</button>
+              ${sections.map(s => `<button class="sub-tab ${activeSub === s ? 'active' : ''}" data-sub="${s}">${subLabels[s]}</button>`).join('')}
+            </div>
+            <button id="exportReportXlsxBtn" class="success">Download QA Report (.xlsx)</button>
+          </div>`;
+
+          if (show('dashboard')) {
+            htmlOut += `<h3 style="font-size:13px;color:#93c5fd;margin-bottom:10px;text-transform:uppercase;">Executive Dashboard</h3>
+            <div class="kpi-grid">
+              <div class="kpi"><small>Planned</small><strong>${d.planned ?? 0}</strong></div>
+              <div class="kpi"><small>Executed</small><strong>${d.executed ?? 0}</strong></div>
+              <div class="kpi"><small>Passed</small><strong style="color:var(--green)">${d.passed ?? 0}</strong></div>
+              <div class="kpi"><small>Failed</small><strong style="color:var(--red)">${d.failed ?? 0}</strong></div>
+              <div class="kpi"><small>Blocked</small><strong style="color:var(--amber)">${d.blocked ?? 0}</strong></div>
+              <div class="kpi"><small>Pass Rate</small><strong style="color:var(--accent)">${d.passRate ?? 0}%</strong></div>
+            </div>
+            <div class="prog-wrap">
+              <div class="prog-row">
+                <div class="prog-label"><span>Execution Progress</span><strong>${execProg}%</strong></div>
+                <div class="prog-track"><div class="prog-fill" style="width:${Math.min(100, execProg)}%;background:var(--accent);"></div></div>
+              </div>
+              <div class="prog-row">
+                <div class="prog-label"><span>Pass Rate</span><strong>${d.passRate ?? 0}%</strong></div>
+                <div class="prog-track"><div class="prog-fill" style="width:${Math.min(100, d.passRate || 0)}%;background:var(--green);"></div></div>
+              </div>
+            </div>
+            <div class="bug-card" style="border-left-color:${recColor}">
+              <h4>Release Recommendation: ${escapeHtml(d.recommendation)}</h4>
+              <p>${escapeHtml(d.summary)}</p>
+            </div>`;
+          }
+
+          if (show('rtm')) {
+            const rtmList = d.rtm || [];
+            const rtmRows = rtmList.map(r => {
+              const stCls = r.coverageStatus === 'Verified' ? 'b-pos' : r.coverageStatus === 'Failed' ? 'b-neg' : 'b-edge';
+              return `<tr>
+                <td><strong>${escapeHtml(r.reqId)}</strong></td>
+                <td>${escapeHtml(r.module)}</td>
+                <td><code>${escapeHtml(r.linkedTCs)}</code></td>
+                <td>${escapeHtml(r.total)}</td>
+                <td style="color:var(--green)">${escapeHtml(r.passed)}</td>
+                <td style="color:var(--red)">${escapeHtml(r.failed)}</td>
+                <td><span class="badge ${stCls}">${escapeHtml(r.coverageStatus)}</span></td>
+              </tr>`;
+            }).join('');
+            htmlOut += `<div class="toolbar" style="margin-top:14px;">
+              <h3 style="font-size:13px;color:#93c5fd;text-transform:uppercase;">Requirements Traceability Matrix (RTM)</h3>
+              <button id="exportRtmCsvBtn">Download RTM (.csv)</button>
+            </div>
+            <div class="table-wrap" style="margin-bottom:14px;"><table><thead><tr><th>Req ID</th><th>Module</th><th>Linked Test Cases</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead><tbody>${rtmRows || '<tr><td colspan="7">No RTM rows returned.</td></tr>'}</tbody></table></div>`;
+          }
+
+          if (show('defects')) {
+            const def = d.defects || { critical: 0, major: 0, minor: 0, blockers: [], risks: [] };
+            htmlOut += `<h3 style="font-size:13px;color:#93c5fd;margin:14px 0 10px;text-transform:uppercase;">Defect &amp; Risk Summary</h3>
+            <div class="kpi-grid">
+              <div class="kpi"><small>Critical / Blocker</small><strong style="color:var(--red)">${def.critical ?? 0}</strong></div>
+              <div class="kpi"><small>Major</small><strong style="color:var(--amber)">${def.major ?? 0}</strong></div>
+              <div class="kpi"><small>Minor</small><strong style="color:var(--accent)">${def.minor ?? 0}</strong></div>
+            </div>
+            <div class="bug-card" style="border-left-color:var(--red)">
+              <h4>Open Blockers &amp; Release Risks</h4>
+              <p><strong>Blockers:</strong> ${(def.blockers && def.blockers.length) ? def.blockers.map(x => escapeHtml(x)).join(' • ') : 'None'}</p>
+              <p><strong>Key Risks:</strong> ${(def.risks && def.risks.length) ? def.risks.map(x => escapeHtml(x)).join(' • ') : 'None identified'}</p>
+            </div>`;
+          }
+
+          if (show('signoff')) {
+            const ecList = d.exitCriteria || [];
+            const ecRows = ecList.map(e => {
+              const cls = String(e.status).toLowerCase() === 'met' || String(e.status).toLowerCase() === 'ready' ? 'b-pos' : 'b-neg';
+              return `<tr><td>${escapeHtml(e.criterion)}</td><td><span class="badge ${cls}">${escapeHtml(e.status)}</span></td><td>${escapeHtml(e.owner)}</td></tr>`;
+            }).join('');
+            htmlOut += `<h3 style="font-size:13px;color:#93c5fd;margin:14px 0 10px;text-transform:uppercase;">Exit Criteria &amp; Release Sign-Off</h3>
+            <div class="table-wrap"><table><thead><tr><th>Exit Criterion</th><th>Status</th><th>Owner</th></tr></thead><tbody>${ecRows || '<tr><td colspan="3">No exit criteria returned.</td></tr>'}</tbody></table></div>`;
+          }
+
+          body.innerHTML = htmlOut;
+          body.querySelectorAll('[data-sub]').forEach(btn => {
+            btn.onclick = () => { activeSub = btn.dataset.sub; renderSubView(); };
+          });
+          const rtmBtn = $('exportRtmCsvBtn');
+          if (rtmBtn) {
+            rtmBtn.onclick = () => {
+              const rtmList = d.rtm || [];
+              const hdr = ['Req ID','Module','Linked TCs','Total','Passed','Failed','Coverage Status'];
+              const csv = [hdr.join(','), ...rtmList.map(r => [r.reqId,r.module,r.linkedTCs,r.total,r.passed,r.failed,r.coverageStatus].map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(','))].join('\n');
+              downloadFile('qa_traceability_matrix.csv', csv, 'text/csv');
+            };
+          }
+          const xlsxBtn = $('exportReportXlsxBtn');
+          if (xlsxBtn) {
+            xlsxBtn.onclick = () => {
+              if (typeof XLSX === 'undefined') {
+                return toast('Excel library failed to load (check internet connection).');
+              }
+              const wb = XLSX.utils.book_new();
+
+              // Sheet 1: Executive Dashboard
+              const execProgVal = d.executionProgress ?? (d.planned ? Number(((d.executed / d.planned) * 100).toFixed(1)) : 0);
+              const dashRows = [
+                ['Full-Stack QA Agent Studio — Executive QA Report'],
+                ['Generated On', new Date().toLocaleString()],
+                ['Release Recommendation', d.recommendation || 'N/A'],
+                ['Executive Summary', d.summary || ''],
+                [],
+                ['Metric', 'Value'],
+                ['Total Planned Test Cases', d.planned ?? 0],
+                ['Total Executed', d.executed ?? 0],
+                ['Passed', d.passed ?? 0],
+                ['Failed', d.failed ?? 0],
+                ['Blocked', d.blocked ?? 0],
+                ['Execution Progress (%)', execProgVal],
+                ['Pass Rate (%)', d.passRate ?? 0]
+              ];
+              const wsDash = XLSX.utils.aoa_to_sheet(dashRows);
+              wsDash['!cols'] = [{ wch: 28 }, { wch: 68 }];
+              XLSX.utils.book_append_sheet(wb, wsDash, 'Executive Dashboard');
+
+              // Sheet 2: RTM (Traceability Matrix)
+              const rtmList = d.rtm || [];
+              const rtmRows = [
+                ['Req ID', 'Module', 'Linked Test Cases', 'Total TCs', 'Passed', 'Failed', 'Coverage Status'],
+                ...rtmList.map(r => [r.reqId || '', r.module || '', r.linkedTCs || '', r.total ?? 0, r.passed ?? 0, r.failed ?? 0, r.coverageStatus || ''])
+              ];
+              const wsRtm = XLSX.utils.aoa_to_sheet(rtmRows);
+              wsRtm['!cols'] = [{ wch: 14 }, { wch: 24 }, { wch: 28 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 18 }];
+              XLSX.utils.book_append_sheet(wb, wsRtm, 'RTM');
+
+              // Sheet 3: Defect & Risk Summary
+              const def = d.defects || { critical: 0, major: 0, minor: 0, blockers: [], risks: [] };
+              const defRows = [
+                ['Severity', 'Open Count'],
+                ['Critical / Blocker', def.critical ?? 0],
+                ['Major', def.major ?? 0],
+                ['Minor', def.minor ?? 0],
+                [],
+                ['Open Blockers'],
+                ...((def.blockers && def.blockers.length) ? def.blockers.map(b => [b]) : [['None']]),
+                [],
+                ['Key Release Risks'],
+                ...((def.risks && def.risks.length) ? def.risks.map(r => [r]) : [['None identified']])
+              ];
+              const wsDef = XLSX.utils.aoa_to_sheet(defRows);
+              wsDef['!cols'] = [{ wch: 65 }, { wch: 16 }];
+              XLSX.utils.book_append_sheet(wb, wsDef, 'Defect & Risk Summary');
+
+              // Sheet 4: Exit Criteria & Sign-Off
+              const ecList = d.exitCriteria || [];
+              const ecRows = [
+                ['Exit Criterion', 'Status', 'Owner'],
+                ...ecList.map(e => [e.criterion || '', e.status || '', e.owner || ''])
+              ];
+              const wsEc = XLSX.utils.aoa_to_sheet(ecRows);
+              wsEc['!cols'] = [{ wch: 52 }, { wch: 16 }, { wch: 20 }];
+              XLSX.utils.book_append_sheet(wb, wsEc, 'Exit Criteria & Sign-Off');
+
+              XLSX.writeFile(wb, 'QA_Execution_Report.xlsx');
+              toast('Exported QA_Execution_Report.xlsx (4 sheets)');
+            };
+          }
+        };
+
+        renderSubView();
+      }
+    }
+
+    function renderTabs(ids) {
+      const tabs = $('outputTabs');
+      tabs.innerHTML = '';
+      ids.forEach(id => {
+        const a = AGENTS.find(x => x.id === id);
+        const btn = document.createElement('button');
+        btn.className = 'tab-btn' + (activeTab === id ? ' active' : '');
+        btn.textContent = a.name;
+        btn.onclick = () => { activeTab = id; renderTabs(ids); renderTabContent(id); };
+        tabs.appendChild(btn);
+      });
+    }
+
+    function saveHistory(story, agentIds, results) {
+      const hist = JSON.parse(localStorage.getItem('qa_studio_history') || '[]');
+      hist.unshift({ ts: new Date().toLocaleString(), story: story.slice(0, 90), agentIds, results });
+      localStorage.setItem('qa_studio_history', JSON.stringify(hist.slice(0, 10)));
+      $('histCount').textContent = Math.min(hist.length, 10);
+    }
+
+    $('runBtn').addEventListener('click', async () => {
+      const story = $('storyInput').value.trim();
+      const chosen = AGENTS.filter(a => selected.has(a.id)).map(a => a.id);
+      if (!chosen.length) return toast('Select at least one QA agent.');
+      if (!story) return toast('Enter a user story or load a sample first.');
+
+      const demoMode = $('demoModeToggle').checked;
+      const apiKey = $('apiKeyInput').value.trim();
+      if (!demoMode && !apiKey) return toast('Enter a Gemini API key or enable Demo Mode.');
+
+      $('runBtn').disabled = true;
+      currentResults = {};
+      $('stepper').innerHTML = chosen.map(id => `<span class="step-chip" id="step-${id}">${AGENTS.find(a=>a.id===id).name}</span>`).join('');
+      $('runStatusText').textContent = demoMode ? 'Running in Demo Mode...' : 'Running Live Gemini Pipeline...';
+
+      let contextChain = `Feature / Story:\n${story}\nTarget URL: ${$('baseUrlInput').value}\nAPI Framework: ${$('apiFramework').value}\nLogs: ${$('logsInput').value}\nPR Diff: ${$('diffInput').value}\nMetrics: Planned=${$('mPlanned').value}, Passed=${$('mPassed').value}, Failed=${$('mFailed').value}, Blocked=${$('mBlocked').value}`;
+
+      for (const id of chosen) {
+        const chip = $(`step-${id}`);
+        chip.className = 'step-chip running';
+        try {
+          if (demoMode) {
+            await new Promise(r => setTimeout(r, 180));
+            currentResults[id] = generateDemoOutput(id, contextChain);
+          } else {
+            currentResults[id] = await callGeminiJSON(
+              apiKey,
+              $('modelSelect').value,
+              getSystemPrompt(id),
+              contextChain,
+              (msg) => { $('runStatusText').textContent = `${id.toUpperCase()}: ${msg}`; }
+            );
+            contextChain += `\n\nOutput from ${id}:\n${JSON.stringify(currentResults[id])}`;
+            // Small pacing delay between agents to avoid free-tier burst 503/429
+            await new Promise(r => setTimeout(r, 1200));
+          }
+          chip.className = 'step-chip done';
+        } catch (err) {
+          chip.className = 'step-chip error';
+          toast(`${id} failed: ${err.message}`);
+        }
+      }
+
+      activeTab = chosen[0];
+      renderTabs(chosen);
+      renderTabContent(activeTab);
+      saveHistory(story, chosen, currentResults);
+      $('runStatusText').textContent = `Completed ${chosen.length} agent(s) (${demoMode ? 'Demo Mode' : $('modelSelect').value}).`;
+      $('runBtn').disabled = false;
+    });
+
+    $('exportAllBtn').addEventListener('click', () => {
+      const keys = Object.keys(currentResults);
+      if (!keys.length) return toast('Run at least one agent before exporting.');
+      let md = `# Full-Stack QA Agent Studio — Execution Report\n\nGenerated: ${new Date().toLocaleString()}\n\n`;
+      keys.forEach(k => {
+        const a = AGENTS.find(x => x.id === k);
+        md += `## ${a.name}\n\n\`\`\`json\n${JSON.stringify(currentResults[k], null, 2)}\n\`\`\`\n\n`;
+      });
+      downloadFile('Full_Stack_QA_Agent_Report.md', md, 'text/markdown');
+    });
+
+    $('historyBtn').addEventListener('click', () => {
+      const hist = JSON.parse(localStorage.getItem('qa_studio_history') || '[]');
+      $('historyList').innerHTML = hist.length ? hist.map((h, i) => `<div class="bug-card" style="border-left-color:var(--accent)">
+        <h4>${escapeHtml(h.ts)} (${h.agentIds.length} agents)</h4>
+        <p>${escapeHtml(h.story)}...</p>
+        <button data-load-hist="${i}">Load Run</button>
+      </div>`).join('') : '<p style="color:var(--muted)">No runs saved yet.</p>';
+      document.querySelectorAll('[data-load-hist]').forEach(b => {
+        b.onclick = () => {
+          const item = hist[+b.dataset.loadHist];
+          currentResults = item.results;
+          activeTab = item.agentIds[0];
+          renderTabs(item.agentIds);
+          renderTabContent(activeTab);
+          $('historyModal').classList.add('hidden');
+        };
+      });
+      $('historyModal').classList.remove('hidden');
+    });
+    $('closeHistBtn').onclick = () => $('historyModal').classList.add('hidden');
+
+    // Init
+    $('histCount').textContent = JSON.parse(localStorage.getItem('qa_studio_history') || '[]').length;
+    renderAgentList();
+    updateConditionals();
+  </script>
+</body>
+</html>
